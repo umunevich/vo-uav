@@ -1,0 +1,9 @@
+calibration:
+  note: EuRoC Machine Hall cam0; use chessboard calibration for your own camera.
+  source: dataset
+camera:
+  cu: 367.215
+  cv: 248.375
+  fu: 458.654
+  fv: 457.296
+name: EuRoC MAV (default)

@@ -3,3 +3,6 @@ uvicorn
 websockets
 opencv-python-headless
 numpy
+pyyaml
+pydantic
+python-multipart
