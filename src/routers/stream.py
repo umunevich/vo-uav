@@ -14,6 +14,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _pose_response(vo: VisualOdometry) -> dict:
+    pose = vo.cur_t
+    return {
+        "x": float(pose[0][0]),
+        "y": float(pose[1][0]),
+        "z": float(pose[2][0]),
+        "confidence": round(vo.confidence, 3),
+        "tracking": vo.tracking_state,
+    }
+
+
 @router.websocket("/ws/vo-stream")
 async def vo_stream_endpoint(
     websocket: WebSocket,
@@ -57,22 +68,17 @@ async def vo_stream_endpoint(
                 frame = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
 
                 if frame is None:
-                    logger.warning("Received invalid frame data. Skipping.")
+                    logger.warning("Received invalid frame data.")
+                    await websocket.send_text(json.dumps(_pose_response(vo)))
                     continue
 
-                current_pose = await asyncio.to_thread(vo.process_frame, frame)
-
-                response = {
-                    "x": float(current_pose[0][0]),
-                    "y": float(current_pose[1][0]),
-                    "z": float(current_pose[2][0]),
-                    "confidence": round(vo.confidence, 3),
-                }
-
-                await websocket.send_text(json.dumps(response))
+                await asyncio.to_thread(vo.process_frame, frame)
+                await websocket.send_text(json.dumps(_pose_response(vo)))
 
             except Exception as frame_err:
                 logger.error("Error processing single frame: %s", frame_err)
+                # Always reply so the frontend frame loop never stalls.
+                await websocket.send_text(json.dumps(_pose_response(vo)))
 
     except WebSocketDisconnect:
         logger.info("Client disconnected. Session ended.")

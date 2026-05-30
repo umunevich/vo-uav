@@ -41,21 +41,20 @@ class LkTrackerParams(BaseModel):
     epsilon: float = 0.01
 
 class VoThresholds(BaseModel):
-    min_features_to_track: int = 40
-    noise_filter_distance: float = 0.05
-    keyframe_reset_distance: float = 1.5
+    min_features_to_track: int = 30
     absolute_scale: float = 1.0
 
 
 class PostProcessingParams(BaseModel):
     enable_smoothing: bool = True
-    smoothing_alpha: float = 0.35
-    max_step_per_frame: float = 0.8
-    min_essential_inliers: int = 15
-    min_inlier_ratio: float = 0.35
-    forward_backward_threshold: float = 3.0
-    keyframe_parallax_px: float = 25.0
-    min_parallax_px: float = 0.8
+    smoothing_alpha: float = 0.45
+    max_step_per_frame: float = 1.2
+    min_essential_inliers: int = 12
+    min_inlier_ratio: float = 0.30
+    forward_backward_threshold: float = 4.0
+    keyframe_interval: int = 45
+    max_lost_frames: int = 8
+    min_parallax_px: float = 0.5
     scale_ratio_min: float = 0.4
     scale_ratio_max: float = 2.5
 
