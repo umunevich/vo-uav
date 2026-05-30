@@ -66,6 +66,7 @@ async def vo_stream_endpoint(
                     "x": float(current_pose[0][0]),
                     "y": float(current_pose[1][0]),
                     "z": float(current_pose[2][0]),
+                    "confidence": round(vo.confidence, 3),
                 }
 
                 await websocket.send_text(json.dumps(response))

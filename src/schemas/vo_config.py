@@ -42,9 +42,22 @@ class LkTrackerParams(BaseModel):
 
 class VoThresholds(BaseModel):
     min_features_to_track: int = 40
-    noise_filter_distance: float = 0.15
+    noise_filter_distance: float = 0.05
     keyframe_reset_distance: float = 1.5
     absolute_scale: float = 1.0
+
+
+class PostProcessingParams(BaseModel):
+    enable_smoothing: bool = True
+    smoothing_alpha: float = 0.35
+    max_step_per_frame: float = 0.8
+    min_essential_inliers: int = 15
+    min_inlier_ratio: float = 0.35
+    forward_backward_threshold: float = 3.0
+    keyframe_parallax_px: float = 25.0
+    min_parallax_px: float = 0.8
+    scale_ratio_min: float = 0.4
+    scale_ratio_max: float = 2.5
 
 class VOConfigSchema(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="User-friendly name of the camera profile")
@@ -54,6 +67,7 @@ class VOConfigSchema(BaseModel):
     feature_detector: FeatureDetectorParams = FeatureDetectorParams()
     lk_tracker: LkTrackerParams = LkTrackerParams()
     vo_thresholds: VoThresholds = VoThresholds()
+    post_processing: PostProcessingParams = PostProcessingParams()
 
 class VOConfigShortResponse(BaseModel):
     id: str
