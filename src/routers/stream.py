@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from src.config_store import DEFAULT_CONFIG_ID, load_camera_matrix
+from src.config_store import DEFAULT_CONFIG_ID, load_vo_profile
 from src.vo import VisualOdometry
 
 logger = logging.getLogger(__name__)
@@ -21,14 +21,28 @@ async def vo_stream_endpoint(
 ):
     await websocket.accept()
 
+    profile_id = config_id or DEFAULT_CONFIG_ID
     try:
-        k_matrix = load_camera_matrix(config_id)
+        profile = load_vo_profile(profile_id)
+        vo = VisualOdometry.from_profile(profile)
+        camera = profile.get("camera", {})
+        logger.info(
+            "VO stream started with profile '%s' (fu=%s, fv=%s, cu=%s, cv=%s)",
+            profile_id,
+            camera.get("fu"),
+            camera.get("fv"),
+            camera.get("cu"),
+            camera.get("cv"),
+        )
     except Exception as exc:
-        logger.warning("Failed to load config '%s', using default: %s", config_id, exc)
-        k_matrix = load_camera_matrix(DEFAULT_CONFIG_ID)
-
-    logger.info("VO stream started with camera profile '%s'", config_id)
-    vo = VisualOdometry(k_matrix)
+        logger.warning(
+            "Failed to load profile '%s', falling back to default: %s",
+            profile_id,
+            exc,
+        )
+        profile = load_vo_profile(DEFAULT_CONFIG_ID)
+        vo = VisualOdometry.from_profile(profile)
+        profile_id = DEFAULT_CONFIG_ID
 
     try:
         while True:

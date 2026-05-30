@@ -57,7 +57,7 @@ def load_config(config_id: str) -> dict[str, Any]:
 
 
 def load_camera_matrix(config_id: str | None) -> np.ndarray:
-    data = load_config(config_id or DEFAULT_CONFIG_ID)
+    data = load_vo_profile(config_id)
     camera = data.get("camera", DEFAULT_INTRINSICS)
     return intrinsics_to_k_matrix(
         float(camera["fu"]),
@@ -65,3 +65,16 @@ def load_camera_matrix(config_id: str | None) -> np.ndarray:
         float(camera["cu"]),
         float(camera["cv"]),
     )
+
+
+def load_vo_profile(config_id: str | None) -> dict[str, Any]:
+    """Return the stored VO profile for the given id, or the default profile."""
+    ensure_default_profile()
+    requested_id = config_id or DEFAULT_CONFIG_ID
+    file_path = get_file_path(requested_id)
+
+    if not os.path.exists(file_path):
+        file_path = get_file_path(DEFAULT_CONFIG_ID)
+
+    with open(file_path, "r", encoding="utf-8") as handle:
+        return yaml.safe_load(handle) or {}
