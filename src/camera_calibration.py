@@ -124,3 +124,23 @@ def intrinsics_to_k_matrix(fu: float, fv: float, cu: float, cv: float) -> np.nda
         ],
         dtype=np.float64,
     )
+
+
+def scale_intrinsics_for_resolution(
+    fu: float,
+    fv: float,
+    cu: float,
+    cv: float,
+    *,
+    calib_width: int,
+    calib_height: int,
+    frame_width: int,
+    frame_height: int,
+) -> tuple[float, float, float, float]:
+    """Resize pinhole intrinsics when VO frames differ from calibration resolution."""
+    if calib_width <= 0 or calib_height <= 0:
+        return fu, fv, cu, cv
+
+    sx = frame_width / calib_width
+    sy = frame_height / calib_height
+    return fu * sx, fv * sy, cu * sx, cv * sy

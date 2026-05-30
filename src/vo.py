@@ -5,11 +5,15 @@ from typing import Any, Literal
 import cv2
 import numpy as np
 
-from src.camera_calibration import intrinsics_to_k_matrix
+from src.camera_calibration import (
+    intrinsics_to_k_matrix,
+    scale_intrinsics_for_resolution,
+)
 from src.pose_smoother import PoseSmoother
 from src.schemas.vo_config import VOConfigSchema
 
 TrackingState = Literal["initializing", "ok", "degraded", "lost"]
+PoseKind = Literal["essential", "affine"]
 
 
 class VisualOdometry:
@@ -38,13 +42,20 @@ class VisualOdometry:
         min_inlier_ratio: float = 0.30,
         forward_backward_threshold: float = 4.0,
         min_parallax_px: float = 0.5,
-        scale_ratio_min: float = 0.4,
-        scale_ratio_max: float = 2.5,
+        scale_ratio_min: float = 0.75,
+        scale_ratio_max: float = 1.15,
         enable_smoothing: bool = True,
         smoothing_alpha: float = 0.45,
         max_step_per_frame: float = 1.2,
     ):
         self.K = K.astype(np.float64)
+        self._base_fu = float(K[0, 0])
+        self._base_fv = float(K[1, 1])
+        self._base_cu = float(K[0, 2])
+        self._base_cv = float(K[1, 2])
+        self._calib_width: int | None = None
+        self._calib_height: int | None = None
+        self._intrinsics_adapted = False
         self.dist_coeffs = (
             np.array(distortion, dtype=np.float64)
             if distortion
@@ -117,7 +128,15 @@ class VisualOdometry:
 
         thresholds = config.vo_thresholds
         post = config.post_processing
-        return cls(
+        calib = config.calibration
+        calib_w = calib.image_width if calib else None
+        calib_h = calib.image_height if calib else None
+        if not calib_w or not calib_h:
+            # Heuristic when profile has no stored resolution (legacy profiles).
+            calib_w = int(round(camera.cu * 2))
+            calib_h = int(round(camera.cv * 2))
+
+        vo = cls(
             intrinsics_to_k_matrix(camera.fu, camera.fv, camera.cu, camera.cv),
             distortion=config.distortion,
             feature_params=feature_params,
@@ -136,15 +155,40 @@ class VisualOdometry:
             smoothing_alpha=post.smoothing_alpha,
             max_step_per_frame=post.max_step_per_frame,
         )
+        vo._calib_width = calib_w
+        vo._calib_height = calib_h
+        return vo
 
     @property
     def confidence(self) -> float:
         return self.last_confidence
 
+    def _ensure_intrinsics_for_frame(self, frame: np.ndarray) -> None:
+        if self._intrinsics_adapted:
+            return
+
+        frame_h, frame_w = frame.shape[:2]
+        ref_w = self._calib_width or frame_w
+        ref_h = self._calib_height or frame_h
+
+        fu, fv, cu, cv = scale_intrinsics_for_resolution(
+            self._base_fu,
+            self._base_fv,
+            self._base_cu,
+            self._base_cv,
+            calib_width=ref_w,
+            calib_height=ref_h,
+            frame_width=frame_w,
+            frame_height=frame_h,
+        )
+        self.K = intrinsics_to_k_matrix(fu, fv, cu, cv)
+        self._intrinsics_adapted = True
+
     def _preprocess(self, img: np.ndarray) -> np.ndarray:
-        if self.dist_coeffs is None or not np.any(self.dist_coeffs):
-            return img
-        return cv2.undistort(img, self.K, self.dist_coeffs)
+        self._ensure_intrinsics_for_frame(img)
+        if self.dist_coeffs is not None and np.any(self.dist_coeffs):
+            return cv2.undistort(img, self.K, self.dist_coeffs)
+        return img
 
     def _detect_features(self, frame: np.ndarray, mask: np.ndarray | None = None) -> np.ndarray | None:
         pts = cv2.goodFeaturesToTrack(frame, mask=mask, **self.feature_params)
@@ -225,7 +269,7 @@ class VisualOdometry:
         self,
         pts_a: np.ndarray,
         pts_b: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, PoseKind] | None:
         if self._median_parallax(pts_a, pts_b) < self.min_parallax_px:
             return None
 
@@ -267,10 +311,14 @@ class VisualOdometry:
                 t_rel.reshape(3, 1),
                 pts_a_in[pose_mask],
                 pts_b_in[pose_mask],
+                "essential",
             )
 
-        # Cheirality often fails on translation-dominated / planar motion (typical webcam).
-        return self._estimate_affine_fallback(pts_a_in, pts_b_in)
+        affine = self._estimate_affine_fallback(pts_a_in, pts_b_in)
+        if affine is None:
+            return None
+        R_rel, t_rel, pa, pb = affine
+        return R_rel, t_rel, pa, pb, "affine"
 
     def _estimate_affine_fallback(
         self,
@@ -295,12 +343,21 @@ class VisualOdometry:
         theta = float(np.arctan2(M[1, 0], M[0, 0]))
         R_rel, _ = cv2.Rodrigues(np.array([0.0, 0.0, theta], dtype=np.float64))
 
+        # Image-plane motion only — do NOT inject a fake forward (Z) component.
         dx = M[0, 2] / self.K[0, 0]
         dy = M[1, 2] / self.K[1, 1]
-        t_rel = np.array([[dx], [dy], [1.0]], dtype=np.float64)
-        t_rel /= max(float(np.linalg.norm(t_rel)), 1e-9)
+        t_rel = np.array([[dx], [dy], [0.0]], dtype=np.float64)
+        norm = float(np.linalg.norm(t_rel))
+        if norm < 1e-6:
+            return None
+        t_rel /= norm
 
         return R_rel, t_rel, pts_a[mask], pts_b[mask]
+
+    def _flow_based_scale(self, pts_a: np.ndarray, pts_b: np.ndarray) -> float:
+        """Scale step from median pixel motion (stable for pan / planar scenes)."""
+        flow_px = float(np.median(np.linalg.norm(pts_b - pts_a, axis=1)))
+        return (flow_px / self.K[0, 0]) * self.absolute_scale
 
     def _estimate_scale(
         self,
@@ -348,13 +405,27 @@ class VisualOdometry:
         t_inc: np.ndarray,
         pts_a: np.ndarray,
         pts_b: np.ndarray,
+        pose_kind: PoseKind,
     ) -> None:
         motion = float(np.linalg.norm(t_inc))
         if motion < 1e-6:
             return
 
         t_unit = t_inc / motion
-        scale = self._estimate_scale(pts_a, pts_b, R_inc, t_unit)
+
+        if pose_kind == "affine":
+            scale = self._flow_based_scale(pts_a, pts_b)
+        else:
+            scale = self._estimate_scale(pts_a, pts_b, R_inc, t_unit)
+            # Suppress runaway forward drift when lateral motion dominates.
+            lateral = float(np.linalg.norm(t_unit[:2]))
+            if lateral > 0.85 and abs(float(t_unit[2])) > 0.2:
+                t_unit = t_unit.copy()
+                t_unit[2, 0] *= 0.15
+                norm = float(np.linalg.norm(t_unit))
+                if norm > 1e-9:
+                    t_unit /= norm
+
         t_scaled = t_unit * scale
 
         self.cur_t = self.cur_t + self.cur_R @ t_scaled
@@ -387,8 +458,8 @@ class VisualOdometry:
 
         pose = self._estimate_relative_pose(pts_prev, pts_cur)
         if pose is not None:
-            R_inc, t_inc, pts_in_a, pts_in_b = pose
-            self._apply_motion(R_inc, t_inc, pts_in_a, pts_in_b)
+            R_inc, t_inc, pts_in_a, pts_in_b, pose_kind = pose
+            self._apply_motion(R_inc, t_inc, pts_in_a, pts_in_b, pose_kind)
         else:
             self.lost_frames += 1
             self.tracking_state = "degraded"

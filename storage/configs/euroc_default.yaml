@@ -1,5 +1,7 @@
 calibration:
-  note: EuRoC Machine Hall cam0; use chessboard calibration for your own camera.
+  image_height: 480
+  image_width: 752
+  note: EuRoC Machine Hall cam0; calibrate your own camera for best accuracy.
   source: dataset
 camera:
   cu: 367.215
@@ -7,3 +9,5 @@ camera:
   fu: 458.654
   fv: 457.296
 name: EuRoC MAV (default)
+vo_thresholds:
+  absolute_scale: 0.15

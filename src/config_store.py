@@ -39,7 +39,9 @@ def ensure_default_profile() -> None:
         "camera": DEFAULT_INTRINSICS.copy(),
         "calibration": {
             "source": "dataset",
-            "note": "EuRoC Machine Hall cam0; use chessboard calibration for your own camera.",
+            "image_width": 752,
+            "image_height": 480,
+            "note": "EuRoC Machine Hall cam0; calibrate your own camera for best accuracy.",
         },
     }
     with open(path, "w", encoding="utf-8") as handle:

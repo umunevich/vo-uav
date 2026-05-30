@@ -42,7 +42,7 @@ class LkTrackerParams(BaseModel):
 
 class VoThresholds(BaseModel):
     min_features_to_track: int = 30
-    absolute_scale: float = 1.0
+    absolute_scale: float = 0.15
 
 
 class PostProcessingParams(BaseModel):
@@ -55,8 +55,8 @@ class PostProcessingParams(BaseModel):
     keyframe_interval: int = 45
     max_lost_frames: int = 8
     min_parallax_px: float = 0.5
-    scale_ratio_min: float = 0.4
-    scale_ratio_max: float = 2.5
+    scale_ratio_min: float = 0.75
+    scale_ratio_max: float = 1.15
 
 class VOConfigSchema(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="User-friendly name of the camera profile")
