@@ -1,0 +1,47 @@
+calibration:
+  image_height: 480
+  image_width: 752
+  images_used: 11
+  inner_corners_cols: 6
+  inner_corners_rows: 7
+  reprojection_error: 1.2109338893114465
+  source: chessboard
+  square_size_m: 0.038
+camera:
+  cu: 360.7951906387023
+  cv: 271.65693272398664
+  fu: 397.87922781996446
+  fv: 394.6635948096312
+distortion:
+- -0.288767366047731
+- 0.10721653447394006
+- -0.0015842875865963457
+- 0.0035639416373689672
+- -0.02135963470175427
+feature_detector:
+  blockSize: 3
+  maxCorners: 2000
+  minDistance: 10
+  qualityLevel: 0.01
+lk_tracker:
+  epsilon: 0.01
+  maxLevel: 4
+  max_count: 30
+  winSize_h: 31
+  winSize_w: 31
+name: Dataset
+post_processing:
+  enable_smoothing: true
+  forward_backward_threshold: 4.0
+  keyframe_interval: 45
+  max_lost_frames: 8
+  max_step_per_frame: 1.2
+  min_essential_inliers: 12
+  min_inlier_ratio: 0.3
+  min_parallax_px: 0.5
+  scale_ratio_max: 1.15
+  scale_ratio_min: 0.75
+  smoothing_alpha: 0.45
+vo_thresholds:
+  absolute_scale: 0.15
+  min_features_to_track: 30

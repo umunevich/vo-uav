@@ -26,6 +26,9 @@ class CalibrationResponse(BaseModel):
     images_used: int
     image_width: int
     image_height: int
+    inner_corners_cols: int
+    inner_corners_rows: int
+    pattern_auto_detected: bool = False
 
 class FeatureDetectorParams(BaseModel):
     maxCorners: int = 2000

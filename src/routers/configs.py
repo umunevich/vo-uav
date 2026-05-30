@@ -92,6 +92,9 @@ async def calibrate_camera(
         images_used=result.images_used,
         image_width=result.image_width,
         image_height=result.image_height,
+        inner_corners_cols=result.inner_corners_cols,
+        inner_corners_rows=result.inner_corners_rows,
+        pattern_auto_detected=result.pattern_auto_detected,
     )
 
 
