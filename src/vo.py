@@ -411,15 +411,15 @@ class VisualOdometry:
         if motion < 1e-6:
             return
 
-        t_unit = t_inc / motion
+        t_unit = np.asarray(t_inc, dtype=np.float64).reshape(3, 1) / motion
 
         if pose_kind == "affine":
             scale = self._flow_based_scale(pts_a, pts_b)
         else:
             scale = self._estimate_scale(pts_a, pts_b, R_inc, t_unit)
             # Suppress runaway forward drift when lateral motion dominates.
-            lateral = float(np.linalg.norm(t_unit[:2]))
-            if lateral > 0.85 and abs(float(t_unit[2])) > 0.2:
+            lateral = float(np.linalg.norm(t_unit[:2, 0]))
+            if lateral > 0.85 and abs(float(t_unit[2, 0])) > 0.2:
                 t_unit = t_unit.copy()
                 t_unit[2, 0] *= 0.15
                 norm = float(np.linalg.norm(t_unit))

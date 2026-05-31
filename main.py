@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.routers.stream import router as stream_router
 from src.routers.configs import router as configs_router
+from src.routers.trajectory import router as trajectory_router
 
 app = FastAPI(
     title="Visual Odometry API",
@@ -23,3 +24,4 @@ def health_check():
 
 app.include_router(stream_router)
 app.include_router(configs_router)
+app.include_router(trajectory_router)
