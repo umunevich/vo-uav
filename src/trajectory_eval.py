@@ -75,14 +75,36 @@ def list_euroc_sequences() -> list[dict[str, Any]]:
         root = datasets_root() / meta["root"]
         gt = root / GT_REL
         cam = root / CAM_TS_REL
+        available = gt.is_file() and cam.is_file()
+        frame_count = 0
+        if cam.is_file():
+            frame_count = len(load_cam_timestamps(cam))
         items.append(
             {
                 "id": sequence_id,
                 "label": meta["label"],
-                "available": gt.is_file() and cam.is_file(),
+                "available": available,
+                "frame_count": frame_count,
             }
         )
     return items
+
+
+def map_frame_indices(frame_indices: list[int], n_cam: int) -> list[int]:
+    """Map VO frame indices into EuRoC cam timestamp range [0, n_cam - 1]."""
+    if n_cam <= 0:
+        raise ValueError("EuRoC camera timestamp list is empty")
+    if not frame_indices:
+        return []
+
+    max_allowed = n_cam - 1
+    max_idx = max(frame_indices)
+    if max_idx <= max_allowed:
+        return [min(max(0, idx), max_allowed) for idx in frame_indices]
+
+    # Video may have more VO samples than EuRoC cam frames — resample proportionally.
+    scale = max_allowed / max_idx if max_idx > 0 else 0.0
+    return [int(round(idx * scale)) for idx in frame_indices]
 
 
 def load_ground_truth(gt_csv: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -118,13 +140,9 @@ def timestamps_for_frames(
     """Return timestamps in seconds for each VO frame index."""
     if sequence is not None:
         cam_ts = load_cam_timestamps(sequence.cam_timestamp_csv)
-        out = np.zeros(len(frame_indices), dtype=np.float64)
-        for i, idx in enumerate(frame_indices):
-            if idx < 0 or idx >= len(cam_ts):
-                raise IndexError(
-                    f"Frame index {idx} out of range for {sequence.sequence_id} "
-                    f"(0..{len(cam_ts) - 1})"
-                )
+        mapped = map_frame_indices(frame_indices, len(cam_ts))
+        out = np.zeros(len(mapped), dtype=np.float64)
+        for i, idx in enumerate(mapped):
             out[i] = cam_ts[idx] / 1e9
         return out
 
@@ -219,7 +237,8 @@ def evaluate_against_euroc(
     frame_indices = frame_indices_from_samples(samples)
 
     cam_ts = load_cam_timestamps(sequence.cam_timestamp_csv)
-    query_ts = cam_ts[frame_indices]
+    mapped_indices = map_frame_indices(frame_indices, len(cam_ts))
+    query_ts = cam_ts[mapped_indices]
     gt_ts, gt_pos = load_ground_truth(sequence.ground_truth_csv)
     gt = interpolate_ground_truth(gt_ts, gt_pos, query_ts)
 

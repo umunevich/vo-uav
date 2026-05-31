@@ -44,22 +44,22 @@ class LkTrackerParams(BaseModel):
     epsilon: float = 0.01
 
 class VoThresholds(BaseModel):
-    min_features_to_track: int = 30
-    absolute_scale: float = 0.15
+    min_features_to_track: int = 35
+    absolute_scale: float = 0.18
 
 
 class PostProcessingParams(BaseModel):
     enable_smoothing: bool = True
-    smoothing_alpha: float = 0.45
-    max_step_per_frame: float = 1.2
+    smoothing_alpha: float = 0.55
+    max_step_per_frame: float = 2.5
     min_essential_inliers: int = 12
-    min_inlier_ratio: float = 0.30
-    forward_backward_threshold: float = 4.0
-    keyframe_interval: int = 45
-    max_lost_frames: int = 8
-    min_parallax_px: float = 0.5
-    scale_ratio_min: float = 0.75
-    scale_ratio_max: float = 1.15
+    min_inlier_ratio: float = 0.28
+    forward_backward_threshold: float = 5.0
+    keyframe_interval: int = 60
+    max_lost_frames: int = 10
+    min_parallax_px: float = 0.3
+    scale_ratio_min: float = 0.65
+    scale_ratio_max: float = 1.35
 
 class VOConfigSchema(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="User-friendly name of the camera profile")

@@ -8,6 +8,31 @@ camera:
   cv: 248.375
   fu: 458.654
   fv: 457.296
+distortion: []
+feature_detector:
+  blockSize: 7
+  maxCorners: 1500
+  minDistance: 10
+  qualityLevel: 0.012
+lk_tracker:
+  epsilon: 0.01
+  maxLevel: 4
+  max_count: 30
+  winSize_h: 21
+  winSize_w: 21
 name: EuRoC MAV (default)
+post_processing:
+  enable_smoothing: false
+  forward_backward_threshold: 5.0
+  keyframe_interval: 45
+  max_lost_frames: 10
+  max_step_per_frame: 3.0
+  min_essential_inliers: 12
+  min_inlier_ratio: 0.28
+  min_parallax_px: 0.3
+  scale_ratio_max: 1.35
+  scale_ratio_min: 0.65
+  smoothing_alpha: 0.55
 vo_thresholds:
-  absolute_scale: 0.15
+  absolute_scale: 0.22
+  min_features_to_track: 35

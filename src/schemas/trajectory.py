@@ -16,6 +16,7 @@ class EuRoCSequenceInfo(BaseModel):
     id: str
     label: str
     available: bool
+    frame_count: int = 0
 
 
 class TrajectoryExportRequest(BaseModel):
@@ -53,3 +54,4 @@ class TrajectoryEvaluateResponse(BaseModel):
     tum_raw: str
     tum_scaled: str
     scaled_positions: list[list[float]]
+    ground_truth_positions: list[list[float]]

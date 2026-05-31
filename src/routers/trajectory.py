@@ -85,4 +85,5 @@ async def evaluate_trajectory(body: TrajectoryEvaluateRequest) -> TrajectoryEval
         tum_raw=metrics["tum_raw"],
         tum_scaled=metrics["tum_scaled"],
         scaled_positions=metrics["scaled_positions"],
+        ground_truth_positions=metrics["ground_truth_positions"],
     )
