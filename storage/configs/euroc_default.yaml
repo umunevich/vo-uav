@@ -23,7 +23,7 @@ lk_tracker:
 name: EuRoC MAV (default)
 post_processing:
   enable_smoothing: false
-  forward_backward_threshold: 5.0
+  forward_backward_threshold: 3.5
   keyframe_interval: 45
   max_lost_frames: 10
   max_step_per_frame: 3.0
